@@ -169,3 +169,10 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+
+# Ignore YOLO model weights and config files inside Files folder
+yolov4.weights
+
+# Ignore all weights, config, and data files inside Files folder
+*.weights
