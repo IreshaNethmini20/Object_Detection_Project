@@ -1,30 +1,49 @@
 ﻿# YOLOv4 Object Detection System
 
-An academic image-based object detection project using pretrained YOLOv4,
-OpenCV DNN, and a small local FastAPI integration.
+An academic image-based object detection project using **pretrained YOLOv4**, **OpenCV DNN**, and a lightweight browser demo served by **FastAPI**.
 
 ## Overview
 
-This project detects and labels objects in still images using YOLOv4 pretrained
-on COCO. The original academic demo has been organized into a reusable detector,
-a configurable CLI, and a local API for demonstrating Python/model integration.
-The project does not train YOLOv4 from scratch or create a custom dataset.
-COCO is an external dataset; no accuracy or mAP has been measured here.
+This project detects and labels objects in still images using YOLOv4 pretrained on the COCO dataset. The original academic demo has been organized into a reusable detector, a configurable command-line interface (CLI), and a local browser/API demo for Python and model integration.
+
+The project does **not** train YOLOv4 from scratch or use a custom training dataset. COCO is an external dataset, and no formal accuracy or mAP evaluation has been performed for this project.
+
+## Web Dashboard
+
+The project includes a lightweight browser interface for uploading images, running YOLOv4 detection, and viewing annotated results, detected categories, confidence scores, total detections, and inference time.
+
+![YOLOv4 Object Detection Dashboard](docs/screenshots/Dashboard.png)
+
+> The dashboard is served locally through FastAPI. Run `uvicorn app.api:app --reload` and open `http://127.0.0.1:8000`.
 
 ## Features
 
 - Pretrained YOLOv4 object detection with 80 COCO class labels
 - Configurable confidence filtering and class-wise Non-Maximum Suppression (NMS)
-- Bounding boxes, readable class labels, and confidence scores
+- Bounding boxes, class labels, and confidence scores
 - Original-resolution annotations and object-category counts
-- Automatically saved annotated images
-- Configurable CLI for one image or all sample images
+- Automatically saved annotated images through the CLI
+- Configurable CLI for a single image or all sample images
 - Local inference timing for each image
-- Optional FastAPI upload endpoint with Swagger documentation
+- FastAPI upload endpoint with Swagger documentation
+- Responsive HTML/CSS/vanilla JavaScript web interface
+- Drag-and-drop image upload
+- Browser canvas annotations, model status, and detection summaries
 
 ## Tech Stack
 
-Python, OpenCV DNN, NumPy, YOLOv4, COCO class labels, FastAPI, and Uvicorn.
+- Python
+- OpenCV DNN
+- NumPy
+- YOLOv4
+- COCO class labels
+- FastAPI
+- Uvicorn
+- HTML
+- CSS
+- Vanilla JavaScript
+
+No separate frontend build system is required.
 
 ## How It Works
 
@@ -34,24 +53,15 @@ flowchart TD
     B --> C[YOLOv4 Inference]
     C --> D[Confidence Filtering]
     D --> E[Class-wise Non-Maximum Suppression]
-    E --> F[Bounding Boxes / Labels]
-    F --> G[Object Counts + Saved Result]
+    E --> F[Bounding Boxes and Labels]
+    F --> G[Object Counts and Results]
 ```
 
-OpenCV constructs an RGB blob scaled by 1/255 at 416 x 416 by default.
-Only this inference blob is resized; detections are mapped back to the original
-image dimensions. Direct resizing can distort aspect ratios, a limitation of
-this simple demo. The CPU network is loaded once per CLI run or API process.
+OpenCV constructs an RGB blob scaled by `1/255` at `416 x 416` by default. Only the inference blob is resized; detections are mapped back to the original image dimensions.
 
-Confidence is objectness multiplied by class probability. OpenCV's Darknet
-Region layer already returns that product in its class scores, so the detector
-uses those scores directly. See the [OpenCV implementation](https://github.com/opencv/opencv/blob/4.x/modules/dnn/src/layers/region_layer.cpp).
-Class-wise NMS removes redundant overlapping boxes without suppressing a
-separate object category at the same location.
+Confidence filtering removes low-confidence detections, while class-wise Non-Maximum Suppression removes redundant overlapping boxes without suppressing detections from different object classes.
 
-Timing covers `setInput` and `forward` only. It excludes loading, preprocessing,
-postprocessing, drawing, saving, and queue waiting. It is a local observation,
-not a formal benchmark; the first run can be slower.
+Inference timing covers the model inference stage only and is included as a local observation, not as a formal performance benchmark.
 
 ## Project Structure
 
@@ -60,39 +70,63 @@ Object_Detection_Project/
 |-- app/
 |   |-- __init__.py
 |   |-- detector.py
-|   `-- api.py
-|-- data/images/
-|   |-- birds.jpg
-|   |-- bus_people.jpg
-|   |-- car_dog.jpg
-|   |-- car.jpg
-|   |-- cat_chair.jpg
-|   |-- elephant.jpg
-|   `-- people.jpg
+|   |-- api.py
+|   |-- templates/
+|   |   `-- index.html
+|   `-- static/
+|       |-- css/
+|       |   `-- style.css
+|       |-- js/
+|       |   `-- app.js
+|       `-- favicon.svg
+|
+|-- data/
+|   `-- images/
+|       |-- birds.jpg
+|       |-- bus_people.jpg
+|       |-- car_dog.jpg
+|       |-- car.jpg
+|       |-- cat_chair.jpg
+|       |-- elephant.jpg
+|       `-- people.jpg
+|
 |-- models/
 |   |-- yolov4.cfg
 |   |-- coco.names
 |   `-- README.md
+|
 |-- results/
-|   `-- .gitkeep
-|-- docs/screenshots/
-|   `-- .gitkeep
+|   |-- .gitkeep
+|   `-- *_detected.jpg
+|
+|-- docs/
+|   `-- screenshots/
+|       |-- Dashboard.png
+|       |-- bus_people_detected.jpg
+|       |-- car_dog_detected.jpg
+|       |-- elephant_detected.jpg
+|       |-- cat_chair_detected.jpg
+|       |-- birds_detected.jpg
+|       |-- car_detected.jpg
+|       `-- people_detected.jpg
+|
 |-- tests/
 |   |-- test_detector.py
 |   `-- test_api.py
+|
 |-- main.py
 |-- requirements.txt
 |-- .gitignore
 `-- README.md
 ```
 
-`models/yolov4.weights` is downloaded separately. Generated CLI images go in
-`results/` and are ignored by Git; curated images in `docs/screenshots/` are
-trackable. No detection screenshots are included until real inference is run.
+`models/yolov4.weights` must be downloaded separately. Generated CLI images are stored in `results/` and may be ignored by Git, while curated screenshots in `docs/screenshots/` are included for GitHub documentation.
 
 ## Setup
 
-Install Python **3.12 or newer**. Run these commands in a terminal:
+Install **Python 3.12 or newer**.
+
+Clone the repository and create a virtual environment:
 
 ```sh
 git clone https://github.com/IreshaNethmini20/Object_Detection_Project.git
@@ -100,162 +134,241 @@ cd Object_Detection_Project
 python -m venv .venv
 ```
 
-Windows PowerShell:
+### Windows PowerShell
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
 ```
 
-Windows Command Prompt:
+### Windows Command Prompt
 
 ```bat
 .venv\Scripts\activate.bat
 ```
 
-macOS/Linux:
+### macOS/Linux
 
 ```sh
 source .venv/bin/activate
 ```
 
-Then:
+Install dependencies:
 
 ```sh
 python -m pip install -r requirements.txt
 ```
 
-Download full pretrained `yolov4.weights` from the official
-[AlexeyAB Darknet YOLOv4 release](https://github.com/AlexeyAB/darknet/releases/tag/yolov4)
-and place it at `models/yolov4.weights`. See [model setup](models/README.md).
-Do not use YOLOv4-tiny weights with this configuration.
+Download the full pretrained `yolov4.weights` from the official AlexeyAB Darknet YOLOv4 release and place it at:
 
-If Windows recognizes `py` but not `python`, use `py -3.12 -m venv .venv`.
-If PowerShell activation is restricted, call `.\.venv\Scripts\python.exe`
-and `.\.venv\Scripts\uvicorn.exe` directly instead of activating.
+```text
+models/yolov4.weights
+```
+
+See `models/README.md` for model setup details.
+
+Do not use YOLOv4-tiny weights with this configuration.
 
 ## Running the CLI
 
-Run from the repository root:
+Run from the repository root.
+
+### Detect objects in one image
 
 ```sh
 python main.py --image data/images/bus_people.jpg
+```
+
+Another example:
+
+```sh
 python main.py --image data/images/elephant.jpg
+```
+
+Custom parameters:
+
+```sh
 python main.py --image data/images/bus_people.jpg --confidence 0.5 --nms-threshold 0.4 --input-size 416 --output-dir results
 ```
 
-Press any key in the image window to close it. Use `--no-display` in a terminal
-without a graphical display. Original image dimensions are preserved.
+Press any key in the image window to close it.
 
-Process all seven sample images, loading the model once:
+For a terminal without a graphical display:
+
+```sh
+python main.py --image data/images/bus_people.jpg --no-display
+```
+
+### Process all sample images
 
 ```sh
 python main.py --input-dir data/images --output-dir results --no-display
 ```
 
-Output names follow `results/<image_stem>_detected.jpg`, for example
-`results/bus_people_detected.jpg`. Rerunning overwrites those outputs.
-The CLI prints actual category counts, total detections, and inference time.
-No counts are predetermined. Input size must be a positive multiple of 32;
-confidence and NMS thresholds must be in `(0, 1]`.
+Generated output files follow this format:
+
+```text
+results/<image_name>_detected.jpg
+```
+
+For example:
+
+```text
+results/bus_people_detected.jpg
+```
+
+The CLI prints the detected categories, total detections, and local inference time.
+
+To view all available CLI options:
 
 ```sh
 python main.py --help
 ```
 
-Missing or invalid images and model files produce an error and nonzero exit
-status. Batch processing reports per-image errors and continues after the first
-image and model have been validated.
+## Web Demo
 
-## Running the FastAPI Demo
-
-From the repository root with the environment activated:
+Start the FastAPI server:
 
 ```sh
 uvicorn app.api:app --reload
 ```
 
-Open [Swagger UI](http://127.0.0.1:8000/docs). Expand `POST /detect`, select
-**Try it out**, choose a JPG/JPEG/PNG image, and select **Execute**.
-The response contains the filename, total detections, category counts,
-detections (class ID/name, confidence, pixel bounding box), and inference time.
-The API returns JSON; it does not save annotated images. Use the CLI to save them.
+When the terminal shows:
 
-- `GET /` provides basic API information.
-- `GET /health` returns `{"status": "ok", "model": "YOLOv4"}` when loaded.
-- `POST /detect` validates file extension, MIME type, signature, and decoding.
-  Uploads are limited to 10 MiB of compressed data.
+```text
+Uvicorn running on http://127.0.0.1:8000
+Application startup complete.
+```
 
-If model loading fails, docs remain available, and health/detection return
-HTTP 503. Check the server warning, add the missing files, then restart.
-Invalid image contents return 400, unsupported formats 415, and oversized
-uploads 413. A detector lock serializes network operations across requests.
-This is a local demonstration of backend/model integration, not a production
-service or deployment.
+the server is running successfully.
+
+Open the web dashboard:
+
+```text
+http://127.0.0.1:8000
+```
+
+### Using the Dashboard
+
+1. Choose or drag a JPG/JPEG/PNG image into the upload area.
+2. Check that the model status shows **Model Ready**.
+3. Preview the selected image.
+4. Click **Detect Objects**.
+5. View the bounding boxes, confidence percentages, category counts, total detections, and inference time.
+6. Click **Clear / Try Another Image** to test another image.
+
+The browser sends the selected image to the FastAPI `POST /detect` endpoint. The backend runs YOLOv4 inference and returns structured JSON results. JavaScript then draws the returned bounding boxes and labels on the browser canvas.
+
+The default detection settings are:
+
+- Confidence threshold: `0.50`
+- NMS threshold: `0.40`
+- YOLO input size: `416 x 416`
+
+## FastAPI / Swagger Demo
+
+The same server also provides interactive Swagger documentation.
+
+Open:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+Then:
+
+1. Expand `POST /detect`.
+2. Click **Try it out**.
+3. Upload a JPG/JPEG/PNG image.
+4. Click **Execute**.
+5. Inspect the returned JSON response.
+
+The response contains:
+
+- Uploaded filename
+- Total detections
+- Category counts
+- Detected class IDs and names
+- Confidence values
+- Pixel bounding boxes
+- Inference time
+
+### API Routes
+
+- `GET /` — serves the local HTML dashboard
+- `GET /api/info` — returns basic API information
+- `GET /health` — returns model availability
+- `POST /detect` — validates and processes uploaded images
+- `GET /docs` — Swagger API documentation
+
+Uploads are limited to 10 MiB of compressed data.
 
 ## Detection Examples
 
-**Pending real inference:** the weights are not included and these screenshots
-do not exist yet. Run the batch command above, then copy four generated outputs
-using PowerShell:
+The following are real annotated outputs generated by the project and copied from `results/`. They are included as visual demonstrations only and are not presented as formal accuracy measurements.
 
-```powershell
-Copy-Item results/bus_people_detected.jpg docs/screenshots/bus_people_detection.jpg
-Copy-Item results/car_dog_detected.jpg docs/screenshots/car_dog_detection.jpg
-Copy-Item results/elephant_detected.jpg docs/screenshots/elephant_detection.jpg
-Copy-Item results/cat_chair_detected.jpg docs/screenshots/cat_chair_detection.jpg
-```
+### Bus and People Detection
 
-Once those files exist, uncomment the Markdown below and replace this pending
-notice with a short description of the actual run. Commented image references
-avoid broken images on GitHub before screenshots are generated.
+![Bus and People Detection](docs/screenshots/bus_people_detected.jpg)
 
-<!--
-![Bus and people detections](docs/screenshots/bus_people_detection.jpg)
-Bus and people sample.
+### Car and Dog Detection
 
-![Car and dog detections](docs/screenshots/car_dog_detection.jpg)
-Car and dog sample.
+![Car and Dog Detection](docs/screenshots/car_dog_detected.jpg)
 
-![Elephant detections](docs/screenshots/elephant_detection.jpg)
-Elephant sample.
+### Elephant Detection
 
-![Cat and chair detections](docs/screenshots/cat_chair_detection.jpg)
-Cat and chair sample.
--->
+![Elephant Detection](docs/screenshots/elephant_detected.jpg)
+
+### Cat and Chair Detection
+
+![Cat and Chair Detection](docs/screenshots/cat_chair_detected.jpg)
 
 ## Sample Images
 
-Seven existing sample images cover birds, bus/people, car/dog, car, cat/chair,
-elephant, and people scenes for visual testing of different categories. They
-are demonstration inputs, not a custom training dataset or labeled evaluation
-set. Their presence does not establish detection accuracy. Filenames containing
-spaces or `&` were renamed; original image contents were preserved.
+Seven sample images are included for visual testing:
+
+- Birds
+- Bus and people
+- Car and dog
+- Car
+- Cat and chair
+- Elephant
+- People
+
+These images are demonstration inputs only. They are not a custom training dataset or a labeled evaluation dataset.
 
 ## What I Learned
 
-This project explores the YOLO object-detection workflow, OpenCV DNN inference,
-blob preprocessing, confidence thresholds, pixel bounding boxes, and NMS.
-The refactor demonstrates reusable model integration and a small FastAPI
-inference interface alongside the original image demo.
+Through this project, I gained practical experience with:
+
+- YOLO object detection workflow
+- OpenCV DNN inference
+- Image preprocessing and blob creation
+- Confidence thresholding
+- Bounding-box coordinate handling
+- Non-Maximum Suppression
+- Reusable model integration
+- FastAPI backend integration
+- REST API testing
+- Browser-based model interaction
+- Visualizing structured AI inference results
 
 ## Limitations
 
-- Uses pretrained YOLOv4; no custom YOLO training was performed.
-- Detection coverage depends on pretrained COCO classes.
-- No measured mAP, precision, recall, or accuracy is reported.
-- CPU inference may be slower than GPU inference.
-- Direct blob resizing can distort non-square inputs.
-- Small, overlapping, or unusual objects may be missed or mislabeled.
-- Academic/demo project; not production deployed. Compressed upload size is
-  limited, but this demo does not provide production resource controls.
+- Uses pretrained YOLOv4; no custom YOLO training was performed
+- Detection coverage is limited to pretrained COCO classes
+- No formal mAP, precision, recall, or accuracy evaluation is reported
+- CPU inference can be slower than GPU inference
+- Direct blob resizing can distort non-square inputs
+- Small, overlapping, or unusual objects may be missed or mislabeled
+- This is an academic/local demonstration and is not production deployed
 
 ## Future Improvements
 
-- Webcam/video detection
+- Webcam and video detection
 - Newer YOLO versions
 - Custom dataset training
 - GPU acceleration
-- Evaluation using labeled data and mAP/precision/recall
+- Formal evaluation using mAP, precision, and recall
 - Docker deployment
 
 ## Quality Checks
@@ -269,17 +382,14 @@ python main.py --help
 python -m unittest discover -s tests -v
 ```
 
-The regression tests use synthetic model outputs to check score handling,
-class-wise NMS, box clipping, image preservation, path handling, and missing
-model-file errors. They do not measure YOLO accuracy and do not require weights.
-To verify real inference, download the weights and run the batch demo.
+The automated tests cover detector logic, NMS behavior, box clipping, file validation, API routes, response serialization, and missing model handling. They do not measure YOLO accuracy and do not require real model weights.
+
+To verify real inference, download the YOLOv4 weights and run the CLI demo.
 
 ## Author
 
-**Iresha Nethmini**
-
+**Iresha Nethmini**  
 Data Science Undergraduate
 
-[GitHub](https://github.com/IreshaNethmini20)
-
+[GitHub](https://github.com/IreshaNethmini20)  
 [LinkedIn](https://www.linkedin.com/in/iresha-nethmini)

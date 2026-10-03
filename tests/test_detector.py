@@ -5,9 +5,10 @@ from pathlib import Path
 from unittest.mock import patch
 import cv2
 import numpy as np
-from app.detector import MODEL_DIR, YOLOv4Detector, load_image
+from app.detector import YOLOv4Detector, load_image
 
 class DetectorTests(unittest.TestCase):
+    """Exercise postprocessing independently of pretrained weights."""
     def setUp(self):
         self.detector = YOLOv4Detector.__new__(YOLOv4Detector)
         self.detector.classes = ['person', 'car']
@@ -64,6 +65,7 @@ class DetectorTests(unittest.TestCase):
                 YOLOv4Detector(**args)
 
     def test_layer_indices_flat_and_nested_load_once(self):
+        """Support both OpenCV index shapes and reuse the loaded Net."""
         for indices in (np.array([1, 3]), np.array([[1], [3]])):
             with tempfile.TemporaryDirectory() as directory:
                 for name in ('yolov4.cfg', 'yolov4.weights'):

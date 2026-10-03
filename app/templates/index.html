@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A local computer vision demo using pretrained YOLOv4, OpenCV and FastAPI.">
+  <title>YOLOv4 Object Detection System</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <script src="/static/js/app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="YOLOv4 home"><img src="/static/favicon.svg" alt="" width="34" height="34"><span>YOLOv4 <span class="brand-light">/ Vision Demo</span></span></a>
+    <nav aria-label="Project links"><a href="/docs">API Documentation <span aria-hidden="true">↗</span></a><a href="https://github.com/IreshaNethmini20/Object_Detection_Project" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a></nav>
+  </header>
+  <main>
+    <section class="intro">
+      <div class="eyebrow"><span class="tiny-box" aria-hidden="true"></span> COMPUTER VISION · LOCAL DEMO</div>
+      <h1>YOLOv4 Object Detection System</h1>
+      <p class="subtitle">Pretrained YOLOv4 + OpenCV + FastAPI</p>
+      <p class="description">Upload an image to identify objects using a pretrained YOLOv4 model trained on the COCO dataset.</p>
+    </section>
+
+    <div class="workspace">
+      <aside class="sidebar">
+        <section class="card model-card" aria-labelledby="model-heading">
+          <div class="card-heading"><h2 id="model-heading">Model information</h2><span class="tag">PRETRAINED</span></div>
+          <dl class="model-info"><div><dt>Model</dt><dd>YOLOv4</dd></div><div><dt>Dataset</dt><dd>COCO</dd></div><div><dt>Backend</dt><dd>OpenCV DNN</dd></div><div><dt>API</dt><dd>FastAPI</dd></div></dl>
+          <div id="model-status" class="model-status" role="status"><span class="status-dot" aria-hidden="true"></span><span id="status-text">Checking model…</span><button id="refresh-status" type="button" aria-label="Refresh model status" title="Refresh model status">↻</button></div>
+        </section>
+
+        <section class="card upload-card" aria-labelledby="upload-heading">
+          <div class="card-heading"><h2 id="upload-heading">Upload an image</h2><span class="step-label">01</span></div>
+          <div id="drop-zone" class="drop-zone">
+            <svg width="34" height="34" viewBox="0 0 32 32" fill="none" aria-hidden="true"><rect x="4" y="5" width="24" height="22" rx="4" stroke="currentColor" stroke-width="1.5"/><circle cx="11" cy="12" r="2" stroke="currentColor" stroke-width="1.5"/><path d="m5 23 7-7 5 5 4-4 6 6" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+            <p>Drag &amp; drop your image</p><span class="drop-or">or choose a file from your device</span>
+            <button id="choose-image" class="button secondary" type="button">Choose Image</button>
+            <input id="file-input" type="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png" hidden>
+            <span class="file-hint">JPG, JPEG or PNG · Up to 10 MiB</span>
+          </div>
+          <p id="selected-filename" class="selected-filename" hidden></p>
+          <button id="detect-button" class="button primary" type="button" disabled><span aria-hidden="true">⌖</span> Detect Objects</button>
+          <button id="clear-button" class="button clear" type="button" hidden>Clear / Try Another Image</button>
+          <p id="loading" class="loading" role="status" hidden>Running YOLOv4 detection...</p>
+          <p id="error-message" class="error" role="alert" hidden></p>
+        </section>
+
+        <details class="card technical"><summary>Technical Details</summary><dl class="model-info"><div><dt>Confidence threshold</dt><dd>0.50</dd></div><div><dt>NMS threshold</dt><dd>0.40</dd></div><div><dt>Input size</dt><dd>416 × 416</dd></div><div><dt>Model</dt><dd>YOLOv4</dd></div><div><dt>Classes</dt><dd>80 COCO classes</dd></div></dl><p>Default API settings. The model runs locally on your CPU.</p></details>
+      </aside>
+
+      <section class="card image-card" aria-labelledby="image-heading">
+        <div class="card-heading image-header"><div><h2 id="image-heading">Image preview</h2><p id="image-caption">Your image and detection results will appear here.</p></div><span id="image-badge" class="tag neutral">NO IMAGE</span></div>
+        <div id="image-stage" class="image-stage">
+          <div id="empty-state" class="empty-state"><div class="empty-icon" aria-hidden="true"><span></span><span></span><span></span><span></span><svg width="48" height="48" viewBox="0 0 32 32" fill="none"><rect x="5" y="6" width="22" height="20" rx="3" stroke="currentColor" stroke-width="1.2"/><circle cx="12" cy="13" r="2" stroke="currentColor" stroke-width="1.2"/><path d="m6 23 7-7 5 5 3-3 5 5" stroke="currentColor" stroke-width="1.2"/></svg></div><h3>A new perspective on your images</h3><p>Choose an image to explore what YOLOv4 can detect.</p><span>80 COCO object classes</span></div>
+          <canvas id="result-canvas" aria-label="Uploaded image with detection annotations" hidden></canvas>
+        </div>
+        <div class="image-footer"><span id="image-dimensions">Original resolution preserved</span><span id="annotation-note">Bounding boxes use actual model predictions</span></div>
+      </section>
+    </div>
+
+    <section id="results-section" class="results-section" aria-labelledby="results-heading" hidden>
+      <div class="section-heading"><div class="eyebrow">DETECTION RESULTS</div><h2 id="results-heading">What the model found</h2></div>
+      <div class="results-grid">
+        <section class="card summary-card" aria-label="Detection summary"><div class="metrics"><div><span>Total detections</span><strong id="total-detections">—</strong></div><div><span>Inference time</span><strong id="inference-time">—</strong></div></div><h3>Detected categories</h3><div id="category-counts" class="category-counts"></div><p class="timing-note">Local model inference time only. This is not a formal benchmark.</p></section>
+        <section class="card detection-card" aria-labelledby="details-heading"><div class="card-heading"><h3 id="details-heading">Individual detections</h3><span class="table-note">Boxes in original image pixels</span></div><div class="table-scroll"><table><thead><tr><th scope="col">Object</th><th scope="col">Confidence</th><th scope="col">Bounding box <span>(x, y, w, h)</span></th></tr></thead><tbody id="detection-rows"></tbody></table></div></section>
+      </div>
+    </section>
+
+    <section class="how-it-works" aria-labelledby="workflow-heading"><div class="section-heading"><div class="eyebrow">BEHIND THE DETECTIONS</div><h2 id="workflow-heading">How it works</h2></div><ol class="workflow"><li>Input Image</li><li>Preprocessing</li><li>YOLOv4</li><li>Confidence Filtering</li><li>Non-Maximum Suppression</li><li>Detection Results</li></ol><p>Pretrained on COCO. No custom model training or formal accuracy evaluation was performed.</p></section>
+  </main>
+  <footer><span>Academic Computer Vision Project – Iresha Nethmini</span><span>Local demonstration · No production deployment</span></footer>
+</body>
+</html>

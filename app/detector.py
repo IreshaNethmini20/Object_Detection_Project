@@ -39,9 +39,15 @@ def load_image(path: str | Path) -> np.ndarray:
     return image
 
 class YOLOv4Detector:
-    """Load one network; serialize mutable network operations across requests."""
+    """Reusable pretrained YOLOv4 inference with original-resolution outputs.
+
+    Configuration defines the network, weights hold its pretrained parameters,
+    and COCO labels map class IDs to names. Loading these once avoids repeated
+    disk I/O and network initialization in a batch or a running API process.
+    """
     def __init__(self, model_dir: str | Path = MODEL_DIR, confidence: float = 0.5,
                  nms_threshold: float = 0.4, input_size: int = 416) -> None:
+        """Validate model assets and configure CPU inference and filtering."""
         if not 0 < confidence <= 1 or not 0 < nms_threshold <= 1:
             raise ValueError('Confidence and NMS thresholds must be in (0, 1].')
         if input_size <= 0 or input_size % 32:
@@ -65,6 +71,7 @@ class YOLOv4Detector:
         layers = self.net.getLayerNames()
         self.output_layers = [layers[int(i) - 1] for i in
                               np.asarray(self.net.getUnconnectedOutLayers()).reshape(-1)]
+        # setInput/forward mutate the shared OpenCV Net and must run together.
         self._lock = Lock()
 
     def detect(self, image: np.ndarray | str | Path) -> DetectionResult:
@@ -74,6 +81,8 @@ class YOLOv4Detector:
         if (not isinstance(image, np.ndarray) or image.dtype != np.uint8 or image.ndim != 3
                 or image.shape[2] != 3 or image.size == 0):
             raise ValueError('Expected a nonempty uint8 BGR image with three channels.')
+        # Build a normalized NCHW tensor without resizing the source image.
+        # OpenCV reads BGR; swapRB converts it to the RGB order YOLO expects.
         blob = cv2.dnn.blobFromImage(image, 1 / 255.0, (self.input_size, self.input_size),
                                     swapRB=True, crop=False)
         with self._lock:
@@ -97,9 +106,14 @@ class YOLOv4Detector:
                 # OpenCV Region already multiplies objectness by class probability.
                 # row[5:] contains joint scores; do not multiply by row[4] again.
                 score = float(row[5 + class_id])
+                # The threshold is a confidence cutoff, not measured accuracy.
                 if score <= self.confidence:
                     continue
+                # YOLO's normalized center/size values map to the original
+                # image, independent of the square blob used for inference.
                 cx, cy, bw, bh = row[:4] * [width, height, width, height]
+                # Boxes may cross an image edge. Clipping keeps coordinates
+                # valid for saved annotations and the browser canvas.
                 x1 = max(0, min(width, int(round(cx - bw / 2))))
                 y1 = max(0, min(height, int(round(cy - bh / 2))))
                 x2 = max(0, min(width, int(round(cx + bw / 2))))
@@ -110,6 +124,8 @@ class YOLOv4Detector:
                 scores.append(score)
                 class_ids.append(class_id)
         kept = []
+        # A bus and a person can overlap; only suppress competing boxes for
+        # the same category so one class does not erase another.
         for class_id in sorted(set(class_ids)):
             group = [i for i, value in enumerate(class_ids) if value == class_id]
             indices = cv2.dnn.NMSBoxes([boxes[i] for i in group], [scores[i] for i in group],
@@ -122,7 +138,7 @@ class YOLOv4Detector:
 
     @staticmethod
     def draw_boxes(image: np.ndarray, detections: list[Detection]) -> np.ndarray:
-        """Annotate a copy, preserving original image dimensions."""
+        """Draw boxes and backed labels on a copy; leave source pixels intact."""
         annotated = image.copy()
         for detection in detections:
             box = detection['bounding_box']

@@ -6,6 +6,8 @@ import cv2
 from app.detector import YOLOv4Detector, load_image
 
 def main() -> int:
+    """Run single-image or batch inference using one configured detector."""
+    # Mutually exclusive inputs keep single and directory modes unambiguous.
     parser = argparse.ArgumentParser(description='Pretrained YOLOv4 image detection with OpenCV.')
     source = parser.add_mutually_exclusive_group(required=True)
     source.add_argument('--image', type=Path, help='Path to one image')
@@ -20,6 +22,7 @@ def main() -> int:
         if args.image:
             paths = [args.image]
         else:
+            # Process supported files in stable order, without recursive scanning.
             if not args.input_dir.is_dir():
                 raise FileNotFoundError(f'Image directory not found: {args.input_dir}')
             paths = sorted(p for p in args.input_dir.iterdir()
@@ -29,6 +32,7 @@ def main() -> int:
             if len({p.stem for p in paths}) != len(paths):
                 raise ValueError('Input filenames must have distinct stems to avoid output overwrites.')
         first_image = load_image(paths[0])
+        # Validate the first image before paying the cost of loading the model.
         detector = YOLOv4Detector(confidence=args.confidence,
                                  nms_threshold=args.nms_threshold, input_size=args.input_size)
         failures = 0
@@ -36,6 +40,7 @@ def main() -> int:
             try:
                 image = first_image if index == 0 else load_image(path)
                 result = detector.detect(image)
+                # Saving is automatic in both modes, including headless demos.
                 output = detector.save_output(image, result['detections'],
                                               args.output_dir / f'{path.stem}_detected.jpg')
                 print(f'\nImage: {path}\nDetected Objects\n----------------')
@@ -47,6 +52,7 @@ def main() -> int:
                 print(f"Inference time: {result['inference_time_ms']:.2f} ms (local run)")
                 print(f'Saved: {output}')
                 if not args.no_display:
+                    # Headless mode skips all GUI calls while retaining output files.
                     cv2.imshow('YOLOv4 Object Detection', detector.draw_boxes(image, result['detections']))
                     cv2.waitKey(0)
                     cv2.destroyAllWindows()
